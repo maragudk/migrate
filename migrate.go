@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"path"
 	"regexp"
 )
 
@@ -16,23 +15,16 @@ var (
 	downMatcher = regexp.MustCompile(`^([\w]+).down.sql`)
 )
 
-type FS interface {
-	fs.ReadDirFS
-	fs.ReadFileFS
-}
-
 type Migrator struct {
-	DB   *sql.DB
-	FS   FS
-	Path string
+	DB *sql.DB
+	FS fs.FS
 }
 
 // New Migrator with default options.
-func New(db *sql.DB, fs FS) *Migrator {
+func New(db *sql.DB, fs fs.FS) *Migrator {
 	return &Migrator{
-		DB:   db,
-		FS:   fs,
-		Path: ".",
+		DB: db,
+		FS: fs,
 	}
 }
 
@@ -104,7 +96,7 @@ func (m *Migrator) MigrateDown(ctx context.Context) error {
 
 // apply a file identified by name and update to version.
 func (m *Migrator) apply(ctx context.Context, name, version string) error {
-	content, err := m.FS.ReadFile(path.Join(m.Path, name))
+	content, err := fs.ReadFile(m.FS, name)
 	if err != nil {
 		return err
 	}
@@ -122,7 +114,7 @@ func (m *Migrator) apply(ctx context.Context, name, version string) error {
 // getFilenames alphabetically where the name matches the given matcher.
 func (m *Migrator) getFilenames(matcher *regexp.Regexp) ([]string, error) {
 	var names []string
-	entries, err := m.FS.ReadDir(m.Path)
+	entries, err := fs.ReadDir(m.FS, ".")
 	if err != nil {
 		return names, err
 	}

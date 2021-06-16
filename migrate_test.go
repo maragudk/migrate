@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"io/fs"
 	"testing"
 	"testing/fstest"
 
@@ -23,9 +24,8 @@ func TestMigrator_MigrateUp(t *testing.T) {
 		is := is.New(t)
 
 		m := migrate.Migrator{
-			DB:   db,
-			FS:   fstest.MapFS{},
-			Path: ".",
+			DB: db,
+			FS: fstest.MapFS{},
 		}
 
 		err := m.MigrateUp(context.Background())
@@ -43,9 +43,8 @@ func TestMigrator_MigrateUp(t *testing.T) {
 		is := is.New(t)
 
 		m := migrate.Migrator{
-			DB:   db,
-			FS:   testdata,
-			Path: "testdata/two",
+			DB: db,
+			FS: mustSub(t, testdata, "testdata/two"),
 		}
 
 		err := m.MigrateUp(context.Background())
@@ -63,9 +62,8 @@ func TestMigrator_MigrateUp(t *testing.T) {
 		is := is.New(t)
 
 		m := migrate.Migrator{
-			DB:   db,
-			FS:   testdata,
-			Path: "testdata/two",
+			DB: db,
+			FS: mustSub(t, testdata, "testdata/two"),
 		}
 
 		err := m.MigrateUp(context.Background())
@@ -81,9 +79,8 @@ func TestMigrator_MigrateUp(t *testing.T) {
 		is := is.New(t)
 
 		m := migrate.Migrator{
-			DB:   db,
-			FS:   testdata,
-			Path: "testdata/bad",
+			DB: db,
+			FS: mustSub(t, testdata, "testdata/bad"),
 		}
 
 		err := m.MigrateUp(context.Background())
@@ -104,9 +101,8 @@ func TestMigrator_MigrateDown(t *testing.T) {
 		is := is.New(t)
 
 		m := migrate.Migrator{
-			DB:   db,
-			FS:   testdata,
-			Path: "testdata/two",
+			DB: db,
+			FS: mustSub(t, testdata, "testdata/two"),
 		}
 
 		err := m.MigrateUp(context.Background())
@@ -132,9 +128,8 @@ func TestMigrator_MigrateDown(t *testing.T) {
 		is := is.New(t)
 
 		m := migrate.Migrator{
-			DB:   db,
-			FS:   testdata,
-			Path: "testdata/two",
+			DB: db,
+			FS: mustSub(t, testdata, "testdata/two"),
 		}
 
 		err := m.MigrateDown(context.Background())
@@ -150,8 +145,11 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	m := migrate.New(db, exampleFS)
-	m.Path = "testdata/example"
+	migrations, err := fs.Sub(exampleFS, "testdata/example")
+	if err != nil {
+		panic(err)
+	}
+	m := migrate.New(db, migrations)
 	if err := m.MigrateUp(context.Background()); err != nil {
 		panic(err)
 	}
@@ -174,4 +172,14 @@ func createDatabase(t *testing.T) (*sql.DB, func()) {
 			t.FailNow()
 		}
 	}
+}
+
+func mustSub(t *testing.T, fsys fs.FS, path string) fs.FS {
+	t.Helper()
+	fsys, err := fs.Sub(fsys, path)
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+	return fsys
 }

@@ -15,6 +15,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"io/fs"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/maragudk/migrate"
@@ -26,15 +27,18 @@ import (
 // migrations/2.up.sql
 // migrations/2.down.sql
 //go:embed migrations
-var migrations embed.FS
+var dir embed.FS
 
 func main() {
 	db, err := sql.Open("pgx", "postgresql://postgres:123@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
+	migrations, err := fs.Sub(dir, "migrations")
+	if err != nil {
+		panic(err)
+	}
 	m := migrate.New(db, migrations)
-	m.Path = "migrations"
 	if err := m.MigrateUp(context.Background()); err != nil {
 		panic(err)
 	}
