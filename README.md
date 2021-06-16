@@ -20,6 +20,11 @@ import (
 	"github.com/maragudk/migrate"
 )
 
+// migrations is a directory with sql files that look like this:
+// migrations/1.up.sql
+// migrations/1.down.sql
+// migrations/2.up.sql
+// migrations/2.down.sql
 //go:embed migrations
 var migrations embed.FS
 
