@@ -15,16 +15,24 @@ var (
 	downMatcher = regexp.MustCompile(`^([\w]+).down.sql`)
 )
 
+const (
+	PlaceholderDollar   = "$1"
+	PlaceholderQuestion = "?"
+)
+
 type Migrator struct {
-	DB *sql.DB
-	FS fs.FS
+	DB          *sql.DB
+	FS          fs.FS
+	Placeholder string
 }
 
 // New Migrator with default options.
+// Migrator.Placeholder default is PlaceholderDollar. You can also use PlaceholderQuestion.
 func New(db *sql.DB, fs fs.FS) *Migrator {
 	return &Migrator{
-		DB: db,
-		FS: fs,
+		DB:          db,
+		FS:          fs,
+		Placeholder: PlaceholderDollar,
 	}
 }
 
@@ -101,7 +109,7 @@ func (m *Migrator) apply(ctx context.Context, name, version string) error {
 		return err
 	}
 	return m.inTransaction(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, `update migrations set version = $1`, version); err != nil {
+		if _, err := tx.ExecContext(ctx, `update migrations set version = `+m.Placeholder, version); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, string(content)); err != nil {

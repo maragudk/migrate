@@ -6,3 +6,12 @@ services:
       POSTGRES_PASSWORD: 123
     ports:
       - 5432:5432
+  maria:
+    image: mariadb:10
+    environment:
+      MARIADB_ROOT_PASSWORD: 123
+      MARIADB_USER: maria
+      MARIADB_PASSWORD: 123
+      MARIADB_DATABASE: maria
+    ports:
+    - 3306:3306

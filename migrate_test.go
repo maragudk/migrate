@@ -9,6 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/matryer/is"
 	_ "github.com/mattn/go-sqlite3"
@@ -20,127 +21,124 @@ import (
 var testdata embed.FS
 
 func TestMigrator(t *testing.T) {
-	tt := []struct {
-		driver         string
+	tests := []struct {
+		flavor         string
 		createDatabase func(*testing.T) (*sql.DB, func())
+		placeholder    string
 	}{
-		{"postgres/", createPostgresDatabase},
-		{"sqlite/", createSQLiteDatabase},
+		{"postgres", createPostgresDatabase, migrate.PlaceholderDollar},
+		{"maria", createMariaDatabase, migrate.PlaceholderQuestion},
+		{"sqlite", createSQLiteDatabase, migrate.PlaceholderDollar},
 	}
 
-	for _, test := range tt {
-		t.Run(test.driver+"creates the migrations table if it does not exist", func(t *testing.T) {
-			db, cleanup := test.createDatabase(t)
-			defer cleanup()
-			is := is.New(t)
+	for _, test := range tests {
+		t.Run(test.flavor, func(t *testing.T) {
+			t.Run("creates the migrations table if it does not exist", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
 
-			m := migrate.Migrator{
-				DB: db,
-				FS: fstest.MapFS{},
-			}
+				m := migrate.New(db, fstest.MapFS{})
+				m.Placeholder = test.placeholder
 
-			err := m.MigrateUp(context.Background())
-			is.NoErr(err)
+				err := m.MigrateUp(context.Background())
+				is.NoErr(err)
 
-			var version string
-			err = db.QueryRow(`select version from migrations`).Scan(&version)
-			is.NoErr(err)
-			is.Equal("", version)
-		})
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("", version)
+			})
 
-		t.Run(test.driver+"runs migrations up", func(t *testing.T) {
-			db, cleanup := test.createDatabase(t)
-			defer cleanup()
-			is := is.New(t)
+			t.Run("runs migrations up", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
 
-			m := migrate.Migrator{
-				DB: db,
-				FS: mustSub(t, testdata, "testdata/two"),
-			}
+				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m.Placeholder = test.placeholder
 
-			err := m.MigrateUp(context.Background())
-			is.NoErr(err)
+				err := m.MigrateUp(context.Background())
+				is.NoErr(err)
 
-			var count int
-			err = db.QueryRow(`select count(*) from test`).Scan(&count)
-			is.NoErr(err)
-			is.Equal(2, count)
-		})
+				var count int
+				err = db.QueryRow(`select count(*) from test`).Scan(&count)
+				is.NoErr(err)
+				is.Equal(2, count)
 
-		t.Run(test.driver+"does not error on another up", func(t *testing.T) {
-			db, cleanup := test.createDatabase(t)
-			defer cleanup()
-			is := is.New(t)
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("3", version)
+			})
 
-			m := migrate.Migrator{
-				DB: db,
-				FS: mustSub(t, testdata, "testdata/two"),
-			}
+			t.Run("does not error on another up", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
 
-			err := m.MigrateUp(context.Background())
-			is.NoErr(err)
+				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m.Placeholder = test.placeholder
 
-			err = m.MigrateUp(context.Background())
-			is.NoErr(err)
-		})
+				err := m.MigrateUp(context.Background())
+				is.NoErr(err)
 
-		t.Run(test.driver+"runs until a bad migration file", func(t *testing.T) {
-			db, cleanup := test.createDatabase(t)
-			defer cleanup()
-			is := is.New(t)
+				err = m.MigrateUp(context.Background())
+				is.NoErr(err)
+			})
 
-			m := migrate.Migrator{
-				DB: db,
-				FS: mustSub(t, testdata, "testdata/bad"),
-			}
+			t.Run("runs until a bad migration file", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
 
-			err := m.MigrateUp(context.Background())
-			is.True(err != nil)
+				m := migrate.New(db, mustSub(t, testdata, "testdata/bad"))
+				m.Placeholder = test.placeholder
 
-			var version string
-			err = db.QueryRow(`select version from migrations`).Scan(&version)
-			is.NoErr(err)
-			is.Equal("1", version)
-		})
+				err := m.MigrateUp(context.Background())
+				is.True(err != nil)
 
-		t.Run(test.driver+"runs migrations down", func(t *testing.T) {
-			db, cleanup := test.createDatabase(t)
-			defer cleanup()
-			is := is.New(t)
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("1", version)
+			})
 
-			m := migrate.Migrator{
-				DB: db,
-				FS: mustSub(t, testdata, "testdata/two"),
-			}
+			t.Run("runs migrations down", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
 
-			err := m.MigrateUp(context.Background())
-			is.NoErr(err)
+				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m.Placeholder = test.placeholder
 
-			err = m.MigrateDown(context.Background())
-			is.NoErr(err)
+				err := m.MigrateUp(context.Background())
+				is.NoErr(err)
 
-			var count int
-			err = db.QueryRow(`select count(*) from test limit 1`).Scan(&count)
-			is.True(err != nil)
+				err = m.MigrateDown(context.Background())
+				is.NoErr(err)
 
-			var version string
-			err = db.QueryRow(`select version from migrations`).Scan(&version)
-			is.NoErr(err)
-			is.Equal("", version)
-		})
+				var count int
+				err = db.QueryRow(`select count(*) from test limit 1`).Scan(&count)
+				is.True(err != nil)
 
-		t.Run(test.driver+"does not run down on newer migrations than current version", func(t *testing.T) {
-			db, cleanup := test.createDatabase(t)
-			defer cleanup()
-			is := is.New(t)
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("", version)
+			})
 
-			m := migrate.Migrator{
-				DB: db,
-				FS: mustSub(t, testdata, "testdata/two"),
-			}
+			t.Run("does not run down on newer migrations than current version", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
 
-			err := m.MigrateDown(context.Background())
-			is.NoErr(err)
+				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m.Placeholder = test.placeholder
+
+				err := m.MigrateDown(context.Background())
+				is.NoErr(err)
+			})
 		})
 	}
 }
@@ -194,6 +192,25 @@ func createSQLiteDatabase(t *testing.T) (*sql.DB, func()) {
 			t.Log(err)
 		}
 		if err := os.Remove("db.sqlite"); err != nil {
+			t.Log(err)
+			t.FailNow()
+		}
+	}
+}
+
+func createMariaDatabase(t *testing.T) (*sql.DB, func()) {
+	t.Helper()
+	db, err := sql.Open("mysql", "maria:123@/maria")
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+	return db, func() {
+		if _, err := db.Exec(`drop table if exists migrations`); err != nil {
+			t.Log(err)
+			t.FailNow()
+		}
+		if _, err := db.Exec(`drop table if exists test`); err != nil {
 			t.Log(err)
 			t.FailNow()
 		}
