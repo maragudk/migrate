@@ -24,11 +24,10 @@ func TestMigrator(t *testing.T) {
 	tests := []struct {
 		flavor         string
 		createDatabase func(*testing.T) (*sql.DB, func())
-		placeholder    string
 	}{
-		{"postgres", createPostgresDatabase, migrate.PlaceholderDollar},
-		{"maria", createMariaDatabase, migrate.PlaceholderQuestion},
-		{"sqlite", createSQLiteDatabase, migrate.PlaceholderDollar},
+		{"postgres", createPostgresDatabase},
+		{"maria", createMariaDatabase},
+		{"sqlite", createSQLiteDatabase},
 	}
 
 	for _, test := range tests {
@@ -39,7 +38,6 @@ func TestMigrator(t *testing.T) {
 				is := is.New(t)
 
 				m := migrate.New(db, fstest.MapFS{})
-				m.Placeholder = test.placeholder
 
 				err := m.MigrateUp(context.Background())
 				is.NoErr(err)
@@ -56,7 +54,6 @@ func TestMigrator(t *testing.T) {
 				is := is.New(t)
 
 				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
-				m.Placeholder = test.placeholder
 
 				err := m.MigrateUp(context.Background())
 				is.NoErr(err)
@@ -78,7 +75,6 @@ func TestMigrator(t *testing.T) {
 				is := is.New(t)
 
 				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
-				m.Placeholder = test.placeholder
 
 				err := m.MigrateUp(context.Background())
 				is.NoErr(err)
@@ -93,7 +89,6 @@ func TestMigrator(t *testing.T) {
 				is := is.New(t)
 
 				m := migrate.New(db, mustSub(t, testdata, "testdata/bad"))
-				m.Placeholder = test.placeholder
 
 				err := m.MigrateUp(context.Background())
 				is.True(err != nil)
@@ -110,7 +105,6 @@ func TestMigrator(t *testing.T) {
 				is := is.New(t)
 
 				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
-				m.Placeholder = test.placeholder
 
 				err := m.MigrateUp(context.Background())
 				is.NoErr(err)
@@ -134,7 +128,6 @@ func TestMigrator(t *testing.T) {
 				is := is.New(t)
 
 				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
-				m.Placeholder = test.placeholder
 
 				err := m.MigrateDown(context.Background())
 				is.NoErr(err)

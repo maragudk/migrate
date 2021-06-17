@@ -11,28 +11,20 @@ import (
 )
 
 var (
-	upMatcher   = regexp.MustCompile(`^([\w]+).up.sql$`)
-	downMatcher = regexp.MustCompile(`^([\w]+).down.sql`)
-)
-
-const (
-	PlaceholderDollar   = "$1"
-	PlaceholderQuestion = "?"
+	upMatcher   = regexp.MustCompile(`^([\w-]+).up.sql$`)
+	downMatcher = regexp.MustCompile(`^([\w-]+).down.sql`)
 )
 
 type Migrator struct {
-	DB          *sql.DB
-	FS          fs.FS
-	Placeholder string
+	DB *sql.DB
+	FS fs.FS
 }
 
 // New Migrator with default options.
-// Migrator.Placeholder default is PlaceholderDollar. You can also use PlaceholderQuestion.
 func New(db *sql.DB, fs fs.FS) *Migrator {
 	return &Migrator{
-		DB:          db,
-		FS:          fs,
-		Placeholder: PlaceholderDollar,
+		DB: db,
+		FS: fs,
 	}
 }
 
@@ -109,7 +101,9 @@ func (m *Migrator) apply(ctx context.Context, name, version string) error {
 		return err
 	}
 	return m.inTransaction(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, `update migrations set version = `+m.Placeholder, version); err != nil {
+		// Normally we wouldn't just string interpolate the version like this,
+		// but because we know the version has been matched against the regexes, we know it's safe.
+		if _, err := tx.ExecContext(ctx, `update migrations set version = '`+version+`'`); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, string(content)); err != nil {
