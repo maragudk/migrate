@@ -8,6 +8,10 @@ This project is work-in-progress and has a lot of rough edges.
 
 ## Usage
 
+```shell
+go get -u github.com/maragudk/migrate
+```
+
 ```go
 package main
 
