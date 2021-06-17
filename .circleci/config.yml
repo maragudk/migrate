@@ -1,0 +1,65 @@
+# Check https://circleci.com/docs/2.0/language-go/ for more details
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:latest
+      - image: postgres:12
+        environment:
+          POSTGRES_PASSWORD: 123
+      - image: mariadb:10
+        environment:
+          MARIADB_ROOT_PASSWORD: 123
+          MARIADB_USER: maria
+          MARIADB_PASSWORD: 123
+          MARIADB_DATABASE: maria
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v4-{{ checksum "go.sum" }}
+      - run:
+          name: Get go-junit-report
+          command: go get github.com/jstemmer/go-junit-report
+      - run:
+          name: Get dependencies
+          command: go mod download
+      - save_cache:
+          key: go-mod-v4-{{ checksum "go.sum" }}
+          paths:
+            - "/go/pkg/mod"
+      - run:
+          name: Waiting for Postgres to be ready
+          command: |
+            for i in `seq 1 10`;
+            do
+              nc -z localhost 5432 && echo Success && exit 0
+              echo -n .
+              sleep 1
+            done
+            echo Failed waiting for Postgres && exit 1
+      - run:
+          name: Waiting for MariaDB to be ready
+          command: |
+            for i in `seq 1 10`;
+            do
+              nc -z localhost 3306 && echo Success && exit 0
+              echo -n .
+              sleep 1
+            done
+            echo Failed waiting for 3306 && exit 1
+      - run:
+          name: Run tests
+          command: |
+            mkdir -p /tmp/test-results
+            trap "go-junit-report </tmp/test-results/go-test.out >/tmp/test-results/go-test-report.xml" EXIT
+            go test -v -coverprofile=/tmp/test-results/cover.out -p 1 ./... | tee /tmp/test-results/go-test.out
+      - run:
+          name: Run coverage
+          command: |
+            go tool cover -html=/tmp/test-results/cover.out -o /tmp/test-results/cover.html
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results/cover.html
+          destination: cover.html
