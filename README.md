@@ -7,6 +7,8 @@ A simple database migration tool using an `sql.DB` connection and `fs.FS` for th
 
 This project is work-in-progress and has a lot of rough edges.
 
+Made in 🇩🇰 by [maragu](https://www.maragu.dk), maker of [online Go courses](https://www.golang.dk/).
+
 ## Usage
 
 ```shell
