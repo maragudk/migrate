@@ -3,6 +3,7 @@ package migrate_test
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"io/fs"
 	"os"
 	"testing"
@@ -168,7 +169,7 @@ func TestMigrator(t *testing.T) {
 var migrations = os.DirFS("testdata/example")
 
 func Example() {
-	db, err := sql.Open("pgx", "postgresql://postgres:123@localhost:5432/postgres?sslmode=disable")
+	db, err := sql.Open("sqlite3", "db.sqlite")
 	if err != nil {
 		panic(err)
 	}
@@ -178,6 +179,31 @@ func Example() {
 	}
 
 	if err := migrate.Down(context.Background(), db, migrations); err != nil {
+		panic(err)
+	}
+}
+
+//go:embed testdata/example
+var embeddedMigrations embed.FS
+
+func Example_embed() {
+	db, err := sql.Open("sqlite3", "db.sqlite")
+	if err != nil {
+		panic(err)
+	}
+
+	// Because migrate always reads from the root of the provided file system,
+	// use fs.Sub to return the subtree rooted at the provided dir.
+	fsys, err := fs.Sub(embeddedMigrations, "testdata/example")
+	if err != nil {
+		panic(err)
+	}
+
+	if err := migrate.Up(context.Background(), db, fsys); err != nil {
+		panic(err)
+	}
+
+	if err := migrate.Down(context.Background(), db, fsys); err != nil {
 		panic(err)
 	}
 }
