@@ -21,36 +21,30 @@ package main
 import (
 	"context"
 	"database/sql"
-	"embed"
-	"io/fs"
+	"os"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/maragudk/migrate"
 )
 
-// migrations is a directory with sql files that look like this:
-// migrations/1.up.sql
-// migrations/1.down.sql
-// migrations/2.up.sql
-// migrations/2.down.sql
-//go:embed migrations
-var dir embed.FS
+// migrations is a directory with sql files that look something like this:
+// migrations/1-accounts.up.sql
+// migrations/1-accounts.down.sql
+// migrations/2-users.up.sql
+// migrations/2-users.down.sql
+var migrations = os.DirFS("migrations")
 
 func main() {
 	db, err := sql.Open("pgx", "postgresql://postgres:123@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
-	migrations, err := fs.Sub(dir, "migrations")
-	if err != nil {
-		panic(err)
-	}
-	m := migrate.New(db, migrations)
-	if err := m.MigrateUp(context.Background()); err != nil {
+
+	if err := migrate.Up(context.Background(), db, migrations); err != nil {
 		panic(err)
 	}
 
-	if err := m.MigrateDown(context.Background()); err != nil {
+	if err := migrate.Down(context.Background(), db, migrations); err != nil {
 		panic(err)
 	}
 }
