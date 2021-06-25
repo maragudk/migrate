@@ -28,6 +28,12 @@ func Down(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 	return m.MigrateDown(ctx)
 }
 
+// To the given version.
+func To(ctx context.Context, db *sql.DB, fsys fs.FS, version string) error {
+	m := New(db, fsys)
+	return m.MigrateTo(ctx, version)
+}
+
 type Migrator struct {
 	DB *sql.DB
 	FS fs.FS
@@ -88,8 +94,7 @@ func (m *Migrator) MigrateDown(ctx context.Context) error {
 	}
 
 	for i := len(names) - 1; i >= 0; i-- {
-		name := names[i]
-		thisVersion := downMatcher.ReplaceAllString(name, "$1")
+		thisVersion := downMatcher.ReplaceAllString(names[i], "$1")
 		if thisVersion > currentVersion {
 			continue
 		}
@@ -99,8 +104,85 @@ func (m *Migrator) MigrateDown(ctx context.Context) error {
 			nextVersion = downMatcher.ReplaceAllString(names[i-1], "$1")
 		}
 
-		if err := m.apply(ctx, name, nextVersion); err != nil {
+		if err := m.apply(ctx, names[i], nextVersion); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *Migrator) MigrateTo(ctx context.Context, version string) error {
+	if version == "" {
+		return m.MigrateDown(ctx)
+	}
+
+	if err := m.createMigrationsTable(ctx); err != nil {
+		return err
+	}
+
+	currentVersion, err := m.getCurrentVersion(ctx)
+	if err != nil {
+		return err
+	}
+
+	if currentVersion == version {
+		return nil
+	}
+
+	var matcher *regexp.Regexp
+	if version > currentVersion {
+		matcher = upMatcher
+	} else {
+		matcher = downMatcher
+	}
+	names, err := m.getFilenames(matcher)
+	if err != nil {
+		return err
+	}
+
+	foundVersion := false
+	for _, name := range names {
+		thisVersion := matcher.ReplaceAllString(name, "$1")
+		if thisVersion == version {
+			foundVersion = true
+		}
+	}
+	if !foundVersion {
+		return errors.New("error finding version " + version)
+	}
+
+	switch {
+	case version > currentVersion:
+		for _, name := range names {
+			thisVersion := matcher.ReplaceAllString(name, "$1")
+			if thisVersion <= currentVersion {
+				continue
+			}
+			if thisVersion > version {
+				break
+			}
+
+			if err := m.apply(ctx, name, thisVersion); err != nil {
+				return err
+			}
+		}
+	case version < currentVersion:
+		for i := len(names) - 1; i >= 0; i-- {
+			thisVersion := matcher.ReplaceAllString(names[i], "$1")
+			if thisVersion > currentVersion {
+				continue
+			}
+
+			if thisVersion <= version {
+				break
+			}
+
+			nextVersion := matcher.ReplaceAllString(names[i-1], "$1")
+
+			if err := m.apply(ctx, names[i], nextVersion); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -47,5 +47,9 @@ func main() {
 	if err := migrate.Down(context.Background(), db, migrations); err != nil {
 		panic(err)
 	}
+
+	if err := migrate.To(context.Background(), db, migrations, "1-accounts"); err != nil {
+		panic(err)
+	}
 }
 ```

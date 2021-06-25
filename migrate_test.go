@@ -68,7 +68,7 @@ func TestMigrator(t *testing.T) {
 				is.Equal("3", version)
 			})
 
-			t.Run("runs migrations up with convience function", func(t *testing.T) {
+			t.Run("runs migrations up with convenience function", func(t *testing.T) {
 				db, cleanup := test.createDatabase(t)
 				defer cleanup()
 				is := is.New(t)
@@ -162,6 +162,136 @@ func TestMigrator(t *testing.T) {
 				err := m.MigrateDown(context.Background())
 				is.NoErr(err)
 			})
+
+			t.Run("migrates up to version", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				m := migrate.New(db, mustSub(t, testdata, "good"))
+
+				err := m.MigrateTo(context.Background(), "2")
+				is.NoErr(err)
+
+				var count int
+				err = db.QueryRow(`select count(*) from test`).Scan(&count)
+				is.NoErr(err)
+				is.Equal(1, count)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("2", version)
+
+				err = m.MigrateTo(context.Background(), "3")
+				is.NoErr(err)
+
+				err = db.QueryRow(`select count(*) from test`).Scan(&count)
+				is.NoErr(err)
+				is.Equal(2, count)
+
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("3", version)
+			})
+
+			t.Run("migrates down to version", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				m := migrate.New(db, mustSub(t, testdata, "good"))
+
+				err := m.MigrateUp(context.Background())
+				is.NoErr(err)
+
+				err = m.MigrateTo(context.Background(), "2")
+				is.NoErr(err)
+
+				var count int
+				err = db.QueryRow(`select count(*) from test`).Scan(&count)
+				is.NoErr(err)
+				is.Equal(1, count)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("2", version)
+
+				err = m.MigrateTo(context.Background(), "1")
+				is.NoErr(err)
+
+				err = db.QueryRow(`select count(*) from test`).Scan(&count)
+				is.NoErr(err)
+				is.Equal(0, count)
+
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("1", version)
+			})
+
+			t.Run("migrates to empty version", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				m := migrate.New(db, mustSub(t, testdata, "good"))
+
+				err := m.MigrateUp(context.Background())
+				is.NoErr(err)
+
+				err = m.MigrateTo(context.Background(), "")
+				is.NoErr(err)
+
+				var count int
+				err = db.QueryRow(`select count(*) from test`).Scan(&count)
+				is.True(err != nil)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("", version)
+			})
+
+			t.Run("migrates to same version without error", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				m := migrate.New(db, mustSub(t, testdata, "good"))
+
+				err := m.MigrateTo(context.Background(), "2")
+				is.NoErr(err)
+
+				err = m.MigrateTo(context.Background(), "2")
+				is.NoErr(err)
+			})
+
+			t.Run("migrate to errors if version not found", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				m := migrate.New(db, mustSub(t, testdata, "good"))
+
+				err := m.MigrateTo(context.Background(), "doesnotexist")
+				is.True(err != nil)
+				is.Equal("error finding version doesnotexist", err.Error())
+			})
+
+			t.Run("migrate to with convenience function", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				err := migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "2")
+				is.NoErr(err)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("2", version)
+			})
 		})
 	}
 }
@@ -179,6 +309,10 @@ func Example() {
 	}
 
 	if err := migrate.Down(context.Background(), db, migrations); err != nil {
+		panic(err)
+	}
+
+	if err := migrate.To(context.Background(), db, migrations, "1"); err != nil {
 		panic(err)
 	}
 }
@@ -204,6 +338,10 @@ func Example_embed() {
 	}
 
 	if err := migrate.Down(context.Background(), db, fsys); err != nil {
+		panic(err)
+	}
+
+	if err := migrate.To(context.Background(), db, fsys, "1"); err != nil {
 		panic(err)
 	}
 }
