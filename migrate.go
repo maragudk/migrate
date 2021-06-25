@@ -1,4 +1,5 @@
 // Package migrate provides a simple Migrator that can migrate databases.
+// Up and Down are one-liner convenience functions.
 package migrate
 
 import (
@@ -14,6 +15,18 @@ var (
 	upMatcher   = regexp.MustCompile(`^([\w-]+).up.sql$`)
 	downMatcher = regexp.MustCompile(`^([\w-]+).down.sql`)
 )
+
+// Up from the current version.
+func Up(ctx context.Context, db *sql.DB, fsys fs.FS) error {
+	m := New(db, fsys)
+	return m.MigrateUp(ctx)
+}
+
+// Down from the current version.
+func Down(ctx context.Context, db *sql.DB, fsys fs.FS) error {
+	m := New(db, fsys)
+	return m.MigrateDown(ctx)
+}
 
 type Migrator struct {
 	DB *sql.DB

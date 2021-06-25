@@ -3,7 +3,6 @@ package migrate_test
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"io/fs"
 	"os"
 	"testing"
@@ -17,8 +16,7 @@ import (
 	"github.com/maragudk/migrate"
 )
 
-//go:embed testdata
-var testdata embed.FS
+var testdata = os.DirFS("testdata")
 
 func TestMigrator(t *testing.T) {
 	tests := []struct {
@@ -53,7 +51,7 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m := migrate.New(db, mustSub(t, testdata, "good"))
 
 				err := m.MigrateUp(context.Background())
 				is.NoErr(err)
@@ -69,12 +67,26 @@ func TestMigrator(t *testing.T) {
 				is.Equal("3", version)
 			})
 
+			t.Run("runs migrations up with convience function", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "good"))
+				is.NoErr(err)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("3", version)
+			})
+
 			t.Run("does not error on another up", func(t *testing.T) {
 				db, cleanup := test.createDatabase(t)
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m := migrate.New(db, mustSub(t, testdata, "good"))
 
 				err := m.MigrateUp(context.Background())
 				is.NoErr(err)
@@ -88,7 +100,7 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "testdata/bad"))
+				m := migrate.New(db, mustSub(t, testdata, "bad"))
 
 				err := m.MigrateUp(context.Background())
 				is.True(err != nil)
@@ -104,7 +116,7 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m := migrate.New(db, mustSub(t, testdata, "good"))
 
 				err := m.MigrateUp(context.Background())
 				is.NoErr(err)
@@ -122,12 +134,29 @@ func TestMigrator(t *testing.T) {
 				is.Equal("", version)
 			})
 
+			t.Run("runs migrations down with convenience function", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				fsys := mustSub(t, testdata, "good")
+				err := migrate.Up(context.Background(), db, fsys)
+				is.NoErr(err)
+				err = migrate.Down(context.Background(), db, fsys)
+				is.NoErr(err)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("", version)
+			})
+
 			t.Run("does not run down on newer migrations than current version", func(t *testing.T) {
 				db, cleanup := test.createDatabase(t)
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "testdata/good"))
+				m := migrate.New(db, mustSub(t, testdata, "good"))
 
 				err := m.MigrateDown(context.Background())
 				is.NoErr(err)
@@ -136,24 +165,19 @@ func TestMigrator(t *testing.T) {
 	}
 }
 
-//go:embed testdata/example
-var exampleFS embed.FS
+var migrations = os.DirFS("testdata/example")
 
 func Example() {
 	db, err := sql.Open("pgx", "postgresql://postgres:123@localhost:5432/postgres?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
-	migrations, err := fs.Sub(exampleFS, "testdata/example")
-	if err != nil {
-		panic(err)
-	}
-	m := migrate.New(db, migrations)
-	if err := m.MigrateUp(context.Background()); err != nil {
+
+	if err := migrate.Up(context.Background(), db, migrations); err != nil {
 		panic(err)
 	}
 
-	if err := m.MigrateDown(context.Background()); err != nil {
+	if err := migrate.Down(context.Background(), db, migrations); err != nil {
 		panic(err)
 	}
 }
