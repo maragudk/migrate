@@ -311,6 +311,10 @@ func Example() {
 	if err := migrate.Down(context.Background(), db, migrations); err != nil {
 		panic(err)
 	}
+
+	if err := migrate.To(context.Background(), db, migrations, "1"); err != nil {
+		panic(err)
+	}
 }
 
 //go:embed testdata/example
@@ -334,6 +338,10 @@ func Example_embed() {
 	}
 
 	if err := migrate.Down(context.Background(), db, fsys); err != nil {
+		panic(err)
+	}
+
+	if err := migrate.To(context.Background(), db, fsys, "1"); err != nil {
 		panic(err)
 	}
 }
