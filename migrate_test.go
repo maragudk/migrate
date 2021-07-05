@@ -36,9 +36,7 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, fstest.MapFS{})
-
-				err := m.MigrateUp(context.Background())
+				err := migrate.Up(context.Background(), db, fstest.MapFS{})
 				is.NoErr(err)
 
 				var version string
@@ -52,9 +50,7 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateUp(context.Background())
+				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 
 				var count int
@@ -68,7 +64,7 @@ func TestMigrator(t *testing.T) {
 				is.Equal("3", version)
 			})
 
-			t.Run("runs migrations up with convenience function", func(t *testing.T) {
+			t.Run("does not error on another up", func(t *testing.T) {
 				db, cleanup := test.createDatabase(t)
 				defer cleanup()
 				is := is.New(t)
@@ -76,23 +72,7 @@ func TestMigrator(t *testing.T) {
 				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 
-				var version string
-				err = db.QueryRow(`select version from migrations`).Scan(&version)
-				is.NoErr(err)
-				is.Equal("3", version)
-			})
-
-			t.Run("does not error on another up", func(t *testing.T) {
-				db, cleanup := test.createDatabase(t)
-				defer cleanup()
-				is := is.New(t)
-
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateUp(context.Background())
-				is.NoErr(err)
-
-				err = m.MigrateUp(context.Background())
+				err = migrate.Up(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 			})
 
@@ -101,9 +81,7 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "bad"))
-
-				err := m.MigrateUp(context.Background())
+				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "bad"))
 				is.True(err != nil)
 
 				var version string
@@ -117,12 +95,10 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateUp(context.Background())
+				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 
-				err = m.MigrateDown(context.Background())
+				err = migrate.Down(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 
 				var count int
@@ -135,31 +111,12 @@ func TestMigrator(t *testing.T) {
 				is.Equal("", version)
 			})
 
-			t.Run("runs migrations down with convenience function", func(t *testing.T) {
-				db, cleanup := test.createDatabase(t)
-				defer cleanup()
-				is := is.New(t)
-
-				fsys := mustSub(t, testdata, "good")
-				err := migrate.Up(context.Background(), db, fsys)
-				is.NoErr(err)
-				err = migrate.Down(context.Background(), db, fsys)
-				is.NoErr(err)
-
-				var version string
-				err = db.QueryRow(`select version from migrations`).Scan(&version)
-				is.NoErr(err)
-				is.Equal("", version)
-			})
-
 			t.Run("does not run down on newer migrations than current version", func(t *testing.T) {
 				db, cleanup := test.createDatabase(t)
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateDown(context.Background())
+				err := migrate.Down(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 			})
 
@@ -168,9 +125,7 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateTo(context.Background(), "2")
+				err := migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "2")
 				is.NoErr(err)
 
 				var count int
@@ -183,7 +138,7 @@ func TestMigrator(t *testing.T) {
 				is.NoErr(err)
 				is.Equal("2", version)
 
-				err = m.MigrateTo(context.Background(), "3")
+				err = migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "3")
 				is.NoErr(err)
 
 				err = db.QueryRow(`select count(*) from test`).Scan(&count)
@@ -200,12 +155,10 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateUp(context.Background())
+				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 
-				err = m.MigrateTo(context.Background(), "2")
+				err = migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "2")
 				is.NoErr(err)
 
 				var count int
@@ -218,7 +171,7 @@ func TestMigrator(t *testing.T) {
 				is.NoErr(err)
 				is.Equal("2", version)
 
-				err = m.MigrateTo(context.Background(), "1")
+				err = migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "1")
 				is.NoErr(err)
 
 				err = db.QueryRow(`select count(*) from test`).Scan(&count)
@@ -235,12 +188,10 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateUp(context.Background())
+				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "good"))
 				is.NoErr(err)
 
-				err = m.MigrateTo(context.Background(), "")
+				err = migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "")
 				is.NoErr(err)
 
 				var count int
@@ -258,12 +209,10 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateTo(context.Background(), "2")
+				err := migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "2")
 				is.NoErr(err)
 
-				err = m.MigrateTo(context.Background(), "2")
+				err = migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "2")
 				is.NoErr(err)
 			})
 
@@ -272,25 +221,9 @@ func TestMigrator(t *testing.T) {
 				defer cleanup()
 				is := is.New(t)
 
-				m := migrate.New(db, mustSub(t, testdata, "good"))
-
-				err := m.MigrateTo(context.Background(), "doesnotexist")
+				err := migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "doesnotexist")
 				is.True(err != nil)
 				is.Equal("error finding version doesnotexist", err.Error())
-			})
-
-			t.Run("migrate to with convenience function", func(t *testing.T) {
-				db, cleanup := test.createDatabase(t)
-				defer cleanup()
-				is := is.New(t)
-
-				err := migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "2")
-				is.NoErr(err)
-
-				var version string
-				err = db.QueryRow(`select version from migrations`).Scan(&version)
-				is.NoErr(err)
-				is.Equal("2", version)
 			})
 		})
 	}
