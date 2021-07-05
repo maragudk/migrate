@@ -1,5 +1,6 @@
-// Package migrate provides a simple Migrator that can migrate databases.
-// Up and Down are one-liner convenience functions.
+// Package migrate provides simple migration functions Up, Down, and To, as well as a Migrator.
+// Up, Down, and To are one-liner convenience functions that use default Options.
+// If you need custom Options, use New.
 package migrate
 
 import (
@@ -12,8 +13,9 @@ import (
 )
 
 var (
-	upMatcher   = regexp.MustCompile(`^([\w-]+).up.sql$`)
-	downMatcher = regexp.MustCompile(`^([\w-]+).down.sql`)
+	upMatcher    = regexp.MustCompile(`^([\w-]+).up.sql$`)
+	downMatcher  = regexp.MustCompile(`^([\w-]+).down.sql`)
+	tableMatcher = regexp.MustCompile(`^[\w]+$`)
 )
 
 // Up from the current version.
@@ -35,20 +37,35 @@ func To(ctx context.Context, db *sql.DB, fsys fs.FS, version string) error {
 }
 
 type Migrator struct {
-	db *sql.DB
-	fs fs.FS
+	db    *sql.DB
+	fs    fs.FS
+	table string
 }
 
+// Options for New. DB and FS are always required.
 type Options struct {
-	DB *sql.DB
-	FS fs.FS
+	DB    *sql.DB
+	FS    fs.FS
+	Table string
 }
 
 // New Migrator with Options.
+// If Options.Table is not set, defaults to "migrations". The table name must match ^[\w]+$ .
+// New panics on illegal options.
 func New(opts Options) *Migrator {
+	if opts.DB == nil || opts.FS == nil {
+		panic("DB and FS must be set")
+	}
+	if opts.Table == "" {
+		opts.Table = "migrations"
+	}
+	if !tableMatcher.MatchString(opts.Table) {
+		panic("illegal table name " + opts.Table + ", must match " + tableMatcher.String())
+	}
 	return &Migrator{
-		db: opts.DB,
-		fs: opts.FS,
+		db:    opts.DB,
+		fs:    opts.FS,
+		table: opts.Table,
 	}
 }
 
@@ -203,7 +220,7 @@ func (m *Migrator) apply(ctx context.Context, name, version string) error {
 	return m.inTransaction(ctx, func(tx *sql.Tx) error {
 		// Normally we wouldn't just string interpolate the version like this,
 		// but because we know the version has been matched against the regexes, we know it's safe.
-		if _, err := tx.ExecContext(ctx, `update migrations set version = '`+version+`'`); err != nil {
+		if _, err := tx.ExecContext(ctx, `update `+m.table+` set version = '`+version+`'`); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, string(content)); err != nil {
@@ -233,17 +250,17 @@ func (m *Migrator) getFilenames(matcher *regexp.Regexp) ([]string, error) {
 // createMigrationsTable if it does not exist already, and insert the empty version if it's empty.
 func (m *Migrator) createMigrationsTable(ctx context.Context) error {
 	return m.inTransaction(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, `create table if not exists migrations (version text not null)`); err != nil {
+		if _, err := tx.ExecContext(ctx, `create table if not exists `+m.table+` (version text not null)`); err != nil {
 			return err
 		}
 
 		var exists bool
-		if err := tx.QueryRowContext(ctx, `select exists (select * from migrations)`).Scan(&exists); err != nil {
+		if err := tx.QueryRowContext(ctx, `select exists (select * from `+m.table+`)`).Scan(&exists); err != nil {
 			return err
 		}
 
 		if !exists {
-			if _, err := tx.ExecContext(ctx, `insert into migrations values ('')`); err != nil {
+			if _, err := tx.ExecContext(ctx, `insert into `+m.table+` values ('')`); err != nil {
 				return err
 			}
 		}
@@ -254,7 +271,7 @@ func (m *Migrator) createMigrationsTable(ctx context.Context) error {
 // getCurrentVersion from the migrations table.
 func (m *Migrator) getCurrentVersion(ctx context.Context) (string, error) {
 	var version string
-	if err := m.db.QueryRowContext(ctx, `select version from migrations`).Scan(&version); err != nil {
+	if err := m.db.QueryRowContext(ctx, `select version from `+m.table+``).Scan(&version); err != nil {
 		return "", err
 	}
 	return version, nil
