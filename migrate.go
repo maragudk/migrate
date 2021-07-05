@@ -18,32 +18,37 @@ var (
 
 // Up from the current version.
 func Up(ctx context.Context, db *sql.DB, fsys fs.FS) error {
-	m := New(db, fsys)
+	m := New(Options{DB: db, FS: fsys})
 	return m.MigrateUp(ctx)
 }
 
 // Down from the current version.
 func Down(ctx context.Context, db *sql.DB, fsys fs.FS) error {
-	m := New(db, fsys)
+	m := New(Options{DB: db, FS: fsys})
 	return m.MigrateDown(ctx)
 }
 
 // To the given version.
 func To(ctx context.Context, db *sql.DB, fsys fs.FS, version string) error {
-	m := New(db, fsys)
+	m := New(Options{DB: db, FS: fsys})
 	return m.MigrateTo(ctx, version)
 }
 
 type Migrator struct {
+	db *sql.DB
+	fs fs.FS
+}
+
+type Options struct {
 	DB *sql.DB
 	FS fs.FS
 }
 
-// New Migrator with default options.
-func New(db *sql.DB, fs fs.FS) *Migrator {
+// New Migrator with Options.
+func New(opts Options) *Migrator {
 	return &Migrator{
-		DB: db,
-		FS: fs,
+		db: opts.DB,
+		fs: opts.FS,
 	}
 }
 
@@ -191,7 +196,7 @@ func (m *Migrator) MigrateTo(ctx context.Context, version string) error {
 
 // apply a file identified by name and update to version.
 func (m *Migrator) apply(ctx context.Context, name, version string) error {
-	content, err := fs.ReadFile(m.FS, name)
+	content, err := fs.ReadFile(m.fs, name)
 	if err != nil {
 		return err
 	}
@@ -211,7 +216,7 @@ func (m *Migrator) apply(ctx context.Context, name, version string) error {
 // getFilenames alphabetically where the name matches the given matcher.
 func (m *Migrator) getFilenames(matcher *regexp.Regexp) ([]string, error) {
 	var names []string
-	entries, err := fs.ReadDir(m.FS, ".")
+	entries, err := fs.ReadDir(m.fs, ".")
 	if err != nil {
 		return names, err
 	}
@@ -249,14 +254,14 @@ func (m *Migrator) createMigrationsTable(ctx context.Context) error {
 // getCurrentVersion from the migrations table.
 func (m *Migrator) getCurrentVersion(ctx context.Context) (string, error) {
 	var version string
-	if err := m.DB.QueryRowContext(ctx, `select version from migrations`).Scan(&version); err != nil {
+	if err := m.db.QueryRowContext(ctx, `select version from migrations`).Scan(&version); err != nil {
 		return "", err
 	}
 	return version, nil
 }
 
 func (m *Migrator) inTransaction(ctx context.Context, callback func(tx *sql.Tx) error) error {
-	tx, err := m.DB.BeginTx(ctx, nil)
+	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.New("error beginning transaction: " + err.Error())
 	}
