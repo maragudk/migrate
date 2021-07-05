@@ -225,8 +225,58 @@ func TestMigrator(t *testing.T) {
 				is.True(err != nil)
 				is.Equal("error finding version doesnotexist", err.Error())
 			})
+
+			t.Run("supports custom table name", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				m := migrate.New(migrate.Options{DB: db, FS: mustSub(t, testdata, "good"), Table: "migrations2"})
+				err := m.MigrateUp(context.Background())
+				is.NoErr(err)
+
+				var version string
+				err = db.QueryRow(`select version from migrations2`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("3", version)
+			})
 		})
 	}
+}
+
+func TestNew(t *testing.T) {
+	t.Run("panics on bad table name", func(t *testing.T) {
+		is := is.New(t)
+
+		defer func() {
+			err := recover()
+			is.True(err != nil)
+			is.Equal(`illegal table name +, must match ^[\w]+$`, err)
+		}()
+		migrate.New(migrate.Options{DB: &sql.DB{}, FS: fstest.MapFS{}, Table: "+"})
+	})
+
+	t.Run("panics on no db given", func(t *testing.T) {
+		is := is.New(t)
+
+		defer func() {
+			err := recover()
+			is.True(err != nil)
+			is.Equal(`DB and FS must be set`, err)
+		}()
+		migrate.New(migrate.Options{FS: fstest.MapFS{}})
+	})
+
+	t.Run("panics on no fs given", func(t *testing.T) {
+		is := is.New(t)
+
+		defer func() {
+			err := recover()
+			is.True(err != nil)
+			is.Equal(`DB and FS must be set`, err)
+		}()
+		migrate.New(migrate.Options{DB: &sql.DB{}})
+	})
 }
 
 var migrations = os.DirFS("testdata/example")
@@ -287,7 +337,7 @@ func createPostgresDatabase(t *testing.T) (*sql.DB, func()) {
 		t.FailNow()
 	}
 	return db, func() {
-		if _, err := db.Exec(`drop table if exists migrations; drop table if exists test`); err != nil {
+		if _, err := db.Exec(`drop table if exists migrations; drop table if exists migrations2; drop table if exists test`); err != nil {
 			t.Log(err)
 			t.FailNow()
 		}
@@ -321,6 +371,10 @@ func createMariaDatabase(t *testing.T) (*sql.DB, func()) {
 	}
 	return db, func() {
 		if _, err := db.Exec(`drop table if exists migrations`); err != nil {
+			t.Log(err)
+			t.FailNow()
+		}
+		if _, err := db.Exec(`drop table if exists migrations2`); err != nil {
 			t.Log(err)
 			t.FailNow()
 		}
