@@ -5,8 +5,6 @@
 
 A simple database migration tool using an `sql.DB` connection and `fs.FS` for the migration source. It has no non-test dependencies.
 
-This project is work-in-progress and has a lot of rough edges.
-
 Made in 🇩🇰 by [maragu](https://www.maragu.dk), maker of [online Go courses](https://www.golang.dk/).
 
 ## Usage
