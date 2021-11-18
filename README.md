@@ -7,6 +7,12 @@ A simple database migration tool using an `sql.DB` connection and `fs.FS` for th
 
 Made in 🇩🇰 by [maragu](https://www.maragu.dk), maker of [online Go courses](https://www.golang.dk/).
 
+## Features
+
+- Simple: The common usage is a one-liner.
+- Safe: Each migration is run in a transaction, and automatically rolled back on errors.
+- Flexible: Setup a custom migrations table and use callbacks before and after each migration.
+
 ## Usage
 
 ```shell
