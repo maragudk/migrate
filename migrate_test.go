@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"io/fs"
 	"os"
 	"testing"
@@ -240,6 +241,75 @@ func TestMigrator(t *testing.T) {
 				is.NoErr(err)
 				is.Equal("3", version)
 			})
+
+			t.Run("can run callbacks before and after each migration", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				var beforeCalled, afterCalled bool
+				before := func(ctx context.Context, tx *sql.Tx, version string) error {
+					beforeCalled = true
+					is.Equal(version, "1")
+					return nil
+				}
+
+				after := func(ctx context.Context, tx *sql.Tx, version string) error {
+					afterCalled = true
+					is.Equal(version, "1")
+					return nil
+				}
+
+				m := migrate.New(migrate.Options{DB: db, FS: mustSub(t, testdata, "good"), Before: before, After: after})
+				err := m.MigrateTo(context.Background(), "1")
+				is.NoErr(err)
+				is.True(beforeCalled)
+				is.True(afterCalled)
+			})
+
+			t.Run("aborts migration if before callback fails", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				before := func(ctx context.Context, tx *sql.Tx, version string) error {
+					return errors.New("oh no")
+				}
+
+				m := migrate.New(migrate.Options{DB: db, FS: mustSub(t, testdata, "good"), Before: before})
+				err := m.MigrateUp(context.Background())
+				is.True(err != nil)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("", version)
+			})
+
+			t.Run("aborts migration if after callback fails", func(t *testing.T) {
+				db, cleanup := test.createDatabase(t)
+				defer cleanup()
+				is := is.New(t)
+
+				// We migrate to version 1 first, because not all databases support DDL changes inside transactions
+				// (or maybe implicitly commit the transaction if they occur).
+				fsys := mustSub(t, testdata, "good")
+				err := migrate.To(context.Background(), db, fsys, "1")
+				is.NoErr(err)
+
+				after := func(ctx context.Context, tx *sql.Tx, version string) error {
+					return errors.New("oh no")
+				}
+
+				m := migrate.New(migrate.Options{DB: db, FS: fsys, After: after})
+				err = m.MigrateUp(context.Background())
+				is.True(err != nil)
+
+				var version string
+				err = db.QueryRow(`select version from migrations`).Scan(&version)
+				is.NoErr(err)
+				is.Equal("1", version)
+			})
 		})
 	}
 }
@@ -325,6 +395,43 @@ func Example_embed() {
 	}
 
 	if err := migrate.To(context.Background(), db, fsys, "1"); err != nil {
+		panic(err)
+	}
+}
+
+func Example_advanced() {
+	db, err := sql.Open("sqlite3", "db.sqlite")
+	if err != nil {
+		panic(err)
+	}
+
+	before := func(ctx context.Context, tx *sql.Tx, version string) error {
+		// Do whatever you need to before each migration
+		return nil
+	}
+
+	after := func(ctx context.Context, tx *sql.Tx, version string) error {
+		// Do whatever you need to after each migration
+		return nil
+	}
+
+	m := migrate.New(migrate.Options{
+		After:  after,
+		Before: before,
+		DB:     db,
+		FS:     migrations,
+		Table:  "migrations2",
+	})
+
+	if err := m.MigrateUp(context.Background()); err != nil {
+		panic(err)
+	}
+
+	if err := m.MigrateDown(context.Background()); err != nil {
+		panic(err)
+	}
+
+	if err := m.MigrateTo(context.Background(), "1"); err != nil {
 		panic(err)
 	}
 }
