@@ -36,17 +36,24 @@ func To(ctx context.Context, db *sql.DB, fsys fs.FS, version string) error {
 	return m.MigrateTo(ctx, version)
 }
 
+// callback that can be run before and after each migration.
+type callback = func(ctx context.Context, tx *sql.Tx, version string) error
+
 type Migrator struct {
-	db    *sql.DB
-	fs    fs.FS
-	table string
+	after  callback
+	before callback
+	db     *sql.DB
+	fs     fs.FS
+	table  string
 }
 
 // Options for New. DB and FS are always required.
 type Options struct {
-	DB    *sql.DB
-	FS    fs.FS
-	Table string
+	After  callback
+	Before callback
+	DB     *sql.DB
+	FS     fs.FS
+	Table  string
 }
 
 // New Migrator with Options.
@@ -63,9 +70,11 @@ func New(opts Options) *Migrator {
 		panic("illegal table name " + opts.Table + ", must match " + tableMatcher.String())
 	}
 	return &Migrator{
-		db:    opts.DB,
-		fs:    opts.FS,
-		table: opts.Table,
+		after:  opts.After,
+		before: opts.Before,
+		db:     opts.DB,
+		fs:     opts.FS,
+		table:  opts.Table,
 	}
 }
 
@@ -218,6 +227,12 @@ func (m *Migrator) apply(ctx context.Context, name, version string) error {
 		return err
 	}
 	return m.inTransaction(ctx, func(tx *sql.Tx) error {
+		if m.before != nil {
+			if err := m.before(ctx, tx, version); err != nil {
+				return err
+			}
+		}
+
 		// Normally we wouldn't just string interpolate the version like this,
 		// but because we know the version has been matched against the regexes, we know it's safe.
 		if _, err := tx.ExecContext(ctx, `update `+m.table+` set version = '`+version+`'`); err != nil {
@@ -225,6 +240,12 @@ func (m *Migrator) apply(ctx context.Context, name, version string) error {
 		}
 		if _, err := tx.ExecContext(ctx, string(content)); err != nil {
 			return err
+		}
+
+		if m.after != nil {
+			if err := m.after(ctx, tx, version); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
