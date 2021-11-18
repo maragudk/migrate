@@ -277,7 +277,7 @@ func (m *Migrator) getCurrentVersion(ctx context.Context) (string, error) {
 	return version, nil
 }
 
-func (m *Migrator) inTransaction(ctx context.Context, callback func(tx *sql.Tx) error) error {
+func (m *Migrator) inTransaction(ctx context.Context, callback func(tx *sql.Tx) error) (err error) {
 	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.New("error beginning transaction: " + err.Error())
