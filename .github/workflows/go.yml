@@ -14,6 +14,8 @@ jobs:
     services:
       postgres:
         image: postgres:14
+        ports:
+          - 5432:5432
         env:
           POSTGRES_PASSWORD: 123
         options: >-
@@ -23,11 +25,18 @@ jobs:
           --health-retries 5
       maria:
         image: mariadb:10
+        ports:
+          - 3306:3306
         env:
           MARIADB_ROOT_PASSWORD: 123
           MARIADB_USER: maria
           MARIADB_PASSWORD: 123
           MARIADB_DATABASE: maria
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v2
 
