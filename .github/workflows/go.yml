@@ -1,0 +1,74 @@
+name: Go
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.16", "1.17", "1.18"]
+        postgres: ["12", "13", "14"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: 123
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      maria:
+        image: mariadb:10
+        ports:
+          - 3306:3306
+        env:
+          MARIADB_ROOT_PASSWORD: 123
+          MARIADB_USER: maria
+          MARIADB_PASSWORD: 123
+          MARIADB_DATABASE: maria
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        if: ${{ matrix.go != '1.16' }}
+        run: go test -v -p 1 -shuffle on ./...
+
+      - name: Test
+        if: ${{ matrix.go == '1.16' }}
+        run: go test -v -p 1 ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v2
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
