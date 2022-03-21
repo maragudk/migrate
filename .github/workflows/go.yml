@@ -53,6 +53,8 @@ jobs:
 
       - name: Coverage
         uses: codecov/codecov-action@v2
+        with:
+          files: ./coverage.txt
 
   lint:
     name: Lint
