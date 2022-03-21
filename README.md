@@ -1,7 +1,8 @@
 # Migrate
 
 [![GoDoc](https://godoc.org/github.com/maragudk/migrate?status.svg)](https://godoc.org/github.com/maragudk/migrate)
-[![CircleCI](https://circleci.com/gh/maragudk/migrate.svg?style=shield)](https://circleci.com/gh/maragudk/migrate)
+[![Go](https://github.com/maragudk/migrate/actions/workflows/go.yml/badge.svg)](https://github.com/maragudk/migrate/actions/workflows/go.yml)
+[![codecov](https://codecov.io/gh/maragudk/migrate/branch/master/graph/badge.svg)](https://codecov.io/gh/maragudk/migrate)
 
 A simple database migration tool using an `sql.DB` connection and `fs.FS` for the migration source. It has no non-test dependencies.
 
