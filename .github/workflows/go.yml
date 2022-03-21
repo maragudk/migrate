@@ -8,12 +8,16 @@ on:
 
 jobs:
 
-  build:
-    name: Build
+  test:
+    name: Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.16", "1.17", "1.18"]
+        postgres: ["12", "13", "14"]
     services:
       postgres:
-        image: postgres:14
+        image: postgres:${{ matrix.postgres }}
         ports:
           - 5432:5432
         env:
@@ -43,18 +47,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18
+          go-version: ${{ matrix.go }}
 
       - name: Build
         run: go build -v ./...
 
       - name: Test
-        run: go test -v -coverprofile=coverage.txt -p 1 -shuffle on ./...
-
-      - name: Coverage
-        uses: codecov/codecov-action@v2
-        with:
-          files: ./coverage.txt
+        run: go test -v -p 1 -shuffle on ./...
 
   lint:
     name: Lint
