@@ -1,10 +1,10 @@
 # Check https://circleci.com/docs/2.0/language-go/ for more details
-version: 2.1
+version: 2
 jobs:
   build:
     docker:
-      - image: cimg/go:1.17
-      - image: postgres:13
+      - image: cimg/go:1.18
+      - image: postgres:14
         environment:
           POSTGRES_PASSWORD: 123
       - image: mariadb:10
@@ -20,7 +20,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Get go-junit-report
-          command: go get github.com/jstemmer/go-junit-report
+          command: go install github.com/jstemmer/go-junit-report@latest
       - run:
           name: Get dependencies
           command: go mod download
