@@ -51,6 +51,9 @@ jobs:
       - name: Test
         run: go test -v -coverprofile=coverage.txt -p 1 -shuffle on ./...
 
+      - name: Coverage
+        uses: codecov/codecov-action@v2
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
