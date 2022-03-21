@@ -20,7 +20,7 @@ jobs:
             - go-mod-v4-{{ checksum "go.sum" }}
       - run:
           name: Get go-junit-report
-          command: go install github.com/jstemmer/go-junit-report
+          command: go install github.com/jstemmer/go-junit-report@latest
       - run:
           name: Get dependencies
           command: go mod download
