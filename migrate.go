@@ -15,7 +15,7 @@ import (
 var (
 	upMatcher    = regexp.MustCompile(`^([\w-]+).up.sql$`)
 	downMatcher  = regexp.MustCompile(`^([\w-]+).down.sql`)
-	tableMatcher = regexp.MustCompile(`^[\w\.]+$`)
+	tableMatcher = regexp.MustCompile(`^[\w.]+$`)
 )
 
 // Up from the current version.
