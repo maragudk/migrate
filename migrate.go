@@ -57,7 +57,7 @@ type Options struct {
 }
 
 // New Migrator with Options.
-// If Options.Table is not set, defaults to "migrations". The table name must match ^[\w\.]+$ .
+// If Options.Table is not set, defaults to "migrations". The table name must match ^[\w.]+$ .
 // New panics on illegal options.
 func New(opts Options) *Migrator {
 	if opts.DB == nil || opts.FS == nil {
