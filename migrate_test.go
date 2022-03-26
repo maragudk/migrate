@@ -286,9 +286,19 @@ func TestNew(t *testing.T) {
 		defer func() {
 			err := recover()
 			is.True(err != nil)
-			is.Equal(`illegal table name +, must match ^[\w]+$`, err)
+			is.Equal(`illegal table name +, must match ^[\w.]+$`, err)
 		}()
 		migrate.New(migrate.Options{DB: &sql.DB{}, FS: fstest.MapFS{}, Table: "+"})
+	})
+
+	t.Run("support table name containing dot", func(t *testing.T) {
+		is := is.New(t)
+
+		defer func() {
+			err := recover()
+			is.True(err == nil)
+		}()
+		migrate.New(migrate.Options{DB: &sql.DB{}, FS: fstest.MapFS{}, Table: "schema.mytable"})
 	})
 
 	t.Run("panics on no db given", func(t *testing.T) {

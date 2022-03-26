@@ -15,7 +15,7 @@ import (
 var (
 	upMatcher    = regexp.MustCompile(`^([\w-]+).up.sql$`)
 	downMatcher  = regexp.MustCompile(`^([\w-]+).down.sql`)
-	tableMatcher = regexp.MustCompile(`^[\w]+$`)
+	tableMatcher = regexp.MustCompile(`^[\w.]+$`)
 )
 
 // Up from the current version.
@@ -57,7 +57,7 @@ type Options struct {
 }
 
 // New Migrator with Options.
-// If Options.Table is not set, defaults to "migrations". The table name must match ^[\w]+$ .
+// If Options.Table is not set, defaults to "migrations". The table name must match ^[\w.]+$ .
 // New panics on illegal options.
 func New(opts Options) *Migrator {
 	if opts.DB == nil || opts.FS == nil {
