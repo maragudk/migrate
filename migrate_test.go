@@ -427,18 +427,10 @@ func createPostgresDatabase(t *testing.T) *sql.DB {
 
 func createSQLiteDatabase(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("sqlite3", "db.sqlite")
+	db, err := sql.Open("sqlite3", ":memory")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Log(err)
-		}
-		if err := os.Remove("db.sqlite"); err != nil {
-			t.Fatal(err)
-		}
-	})
 	return db
 }
 
