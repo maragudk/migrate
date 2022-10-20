@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -76,6 +77,7 @@ func TestMigrator(t *testing.T) {
 
 				err := migrate.Up(context.Background(), db, mustSub(t, testdata, "bad"))
 				is.True(err != nil)
+				is.True(strings.Contains(err.Error(), "error migrating up: error running migration 2 from 2.up.sql"))
 
 				version := getVersion(t, db)
 				is.Equal("1", version)
@@ -197,7 +199,7 @@ func TestMigrator(t *testing.T) {
 
 				err := migrate.To(context.Background(), db, mustSub(t, testdata, "good"), "doesnotexist")
 				is.True(err != nil)
-				is.Equal("error finding version doesnotexist", err.Error())
+				is.Equal("error migrating to: error finding version doesnotexist", err.Error())
 			})
 
 			t.Run("supports custom table name", func(t *testing.T) {
@@ -249,6 +251,7 @@ func TestMigrator(t *testing.T) {
 				m := migrate.New(migrate.Options{DB: db, FS: mustSub(t, testdata, "good"), Before: before})
 				err := m.MigrateUp(context.Background())
 				is.True(err != nil)
+				is.True(strings.Contains(err.Error(), "error migrating up: error in 'before' callback when applying version 1 from 1.up.sql: oh no"))
 
 				version := getVersion(t, db)
 				is.Equal("", version)
@@ -271,6 +274,7 @@ func TestMigrator(t *testing.T) {
 				m := migrate.New(migrate.Options{DB: db, FS: fsys, After: after})
 				err = m.MigrateUp(context.Background())
 				is.True(err != nil)
+				is.True(strings.Contains(err.Error(), "error migrating up: error in 'after' callback when applying version 2 from 2.up.sql: oh no"))
 
 				version := getVersion(t, db)
 				is.Equal("1", version)
