@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ["1.16", "1.17", "1.18"]
-        postgres: ["12", "13", "14"]
+        go: ["1.16", "1.17", "1.18", "1.19"]
+        postgres: ["12", "13", "14", "15"]
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
@@ -42,10 +42,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
           check-latest: true
@@ -65,8 +66,8 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Check out
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Lint
         uses: golangci/golangci-lint-action@v2
