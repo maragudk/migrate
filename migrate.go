@@ -79,7 +79,13 @@ func New(opts Options) *Migrator {
 }
 
 // MigrateUp from the current version.
-func (m *Migrator) MigrateUp(ctx context.Context) error {
+func (m *Migrator) MigrateUp(ctx context.Context) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("error migrating up: %w", err)
+		}
+	}()
+
 	if err := m.createMigrationsTable(ctx); err != nil {
 		return err
 	}
@@ -109,7 +115,13 @@ func (m *Migrator) MigrateUp(ctx context.Context) error {
 }
 
 // MigrateDown from the current version.
-func (m *Migrator) MigrateDown(ctx context.Context) error {
+func (m *Migrator) MigrateDown(ctx context.Context) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("error migrating down: %w", err)
+		}
+	}()
+
 	if err := m.createMigrationsTable(ctx); err != nil {
 		return err
 	}
@@ -143,7 +155,13 @@ func (m *Migrator) MigrateDown(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) MigrateTo(ctx context.Context, version string) error {
+func (m *Migrator) MigrateTo(ctx context.Context, version string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("error migrating to: %w", err)
+		}
+	}()
+
 	if version == "" {
 		return m.MigrateDown(ctx)
 	}
@@ -224,27 +242,28 @@ func (m *Migrator) MigrateTo(ctx context.Context, version string) error {
 func (m *Migrator) apply(ctx context.Context, name, version string) error {
 	content, err := fs.ReadFile(m.fs, name)
 	if err != nil {
-		return err
+		return fmt.Errorf("error reading migration file %v: %w", name, err)
 	}
+
 	return m.inTransaction(ctx, func(tx *sql.Tx) error {
 		if m.before != nil {
 			if err := m.before(ctx, tx, version); err != nil {
-				return err
+				return fmt.Errorf("error in 'before' callback when applying version %v from %v: %w", version, name, err)
 			}
 		}
 
 		// Normally we wouldn't just string interpolate the version like this,
 		// but because we know the version has been matched against the regexes, we know it's safe.
 		if _, err := tx.ExecContext(ctx, `update `+m.table+` set version = '`+version+`'`); err != nil {
-			return err
+			return fmt.Errorf("error updating version to %v: %w", version, err)
 		}
 		if _, err := tx.ExecContext(ctx, string(content)); err != nil {
-			return err
+			return fmt.Errorf("error running migration %v from %v: %w", version, name, err)
 		}
 
 		if m.after != nil {
 			if err := m.after(ctx, tx, version); err != nil {
-				return err
+				return fmt.Errorf("error in 'after' callback when applying version %v from %v: %w", version, name, err)
 			}
 		}
 		return nil
@@ -272,7 +291,7 @@ func (m *Migrator) getFilenames(matcher *regexp.Regexp) ([]string, error) {
 func (m *Migrator) createMigrationsTable(ctx context.Context) error {
 	return m.inTransaction(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `create table if not exists `+m.table+` (version text not null)`); err != nil {
-			return err
+			return fmt.Errorf("error creating migrations table %v: %w", m.table, err)
 		}
 
 		var exists bool
@@ -293,7 +312,7 @@ func (m *Migrator) createMigrationsTable(ctx context.Context) error {
 func (m *Migrator) getCurrentVersion(ctx context.Context) (string, error) {
 	var version string
 	if err := m.db.QueryRowContext(ctx, `select version from `+m.table+``).Scan(&version); err != nil {
-		return "", err
+		return "", fmt.Errorf("error getting current migration version: %w", err)
 	}
 	return version, nil
 }
@@ -301,7 +320,7 @@ func (m *Migrator) getCurrentVersion(ctx context.Context) (string, error) {
 func (m *Migrator) inTransaction(ctx context.Context, callback func(tx *sql.Tx) error) (err error) {
 	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
-		return errors.New("error beginning transaction: " + err.Error())
+		return fmt.Errorf("error beginning transaction: %w", err)
 	}
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -312,7 +331,7 @@ func (m *Migrator) inTransaction(ctx context.Context, callback func(tx *sql.Tx) 
 		return rollback(tx, err)
 	}
 	if err := tx.Commit(); err != nil {
-		return errors.New("error committing transaction: " + err.Error())
+		return fmt.Errorf("error committing transaction: %w", err)
 	}
 
 	return nil
@@ -320,7 +339,7 @@ func (m *Migrator) inTransaction(ctx context.Context, callback func(tx *sql.Tx) 
 
 func rollback(tx *sql.Tx, err error) error {
 	if txErr := tx.Rollback(); txErr != nil {
-		return fmt.Errorf("error rolling back transaction after error (transaction error: %v), original error: %v", txErr.Error(), err.Error())
+		return fmt.Errorf("error rolling back transaction after error (transaction error: %v), original error: %w", txErr, err)
 	}
 	return err
 }
