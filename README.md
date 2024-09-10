@@ -1,6 +1,6 @@
 # Migrate
 
-[![GoDoc](https://godoc.org/github.com/maragudk/migrate?status.svg)](https://godoc.org/github.com/maragudk/migrate)
+[![GoDoc](https://pkg.go.dev/badge/maragu.dev/migrate)](https://pkg.go.dev/maragu.dev/migrate)
 [![Go](https://github.com/maragudk/migrate/actions/workflows/go.yml/badge.svg)](https://github.com/maragudk/migrate/actions/workflows/go.yml)
 
 A simple database migration tool using an `sql.DB` connection and `fs.FS` for the migration source. It has no non-test dependencies.
@@ -16,7 +16,7 @@ Made in 🇩🇰 by [maragu](https://www.maragu.dk), maker of [online Go courses
 ## Usage
 
 ```shell
-go get -u github.com/maragudk/migrate
+go get maragu.dev/migrate
 ```
 
 ```go
@@ -28,7 +28,7 @@ import (
 	"os"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/maragudk/migrate"
+	"maragu.dev/migrate"
 )
 
 // migrations is a directory with sql files that look something like this:

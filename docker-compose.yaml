@@ -1,11 +1,10 @@
-version: '3.8'
 services:
   postgres:
-    image: postgres:14
+    image: postgres:16
     environment:
       POSTGRES_PASSWORD: 123
     ports:
-      - 5432:5432
+      - "5432:5432"
   maria:
     image: mariadb:10
     environment:
@@ -14,4 +13,4 @@ services:
       MARIADB_PASSWORD: 123
       MARIADB_DATABASE: maria
     ports:
-    - 3306:3306
+    - "3306:3306"
