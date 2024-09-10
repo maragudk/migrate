@@ -1,20 +1,27 @@
-name: Go
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
-
   test:
     name: Test
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        go: ["1.16", "1.17", "1.18", "1.19"]
-        postgres: ["12", "13", "14", "15"]
+        go: ["1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22", "1.23"]
+        postgres: ["12", "13", "14", "15", "16"]
+
     services:
       postgres:
         image: postgres:${{ matrix.postgres }}
@@ -41,12 +48,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
           check-latest: true
@@ -65,11 +73,18 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v4
         with:
           version: latest

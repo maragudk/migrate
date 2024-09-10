@@ -1,4 +1,4 @@
-module github.com/maragudk/migrate
+module maragu.dev/migrate
 
 go 1.16
 

@@ -16,7 +16,7 @@ import (
 	"github.com/matryer/is"
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/maragudk/migrate"
+	"maragu.dev/migrate"
 )
 
 var testdata = os.DirFS("testdata")
