@@ -57,3 +57,17 @@ func main() {
 	}
 }
 ```
+
+### Helper tool
+
+To install the helper tool, run:
+
+```shell
+go install maragu.dev/migrate/cmd/migrate@latest
+```
+
+Then you can run `migrate` in your terminal.
+
+```shell
+migrate create sql/migrations accounts
+```
