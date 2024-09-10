@@ -273,7 +273,7 @@ func TestNew(t *testing.T) {
 		defer func() {
 			err := recover()
 			is.True(t, err != nil)
-			is.Equal(t, `illegal table name +, must match ^[\w.]+$`, err)
+			is.Equal(t, `illegal table name +, must match ^[\w.]+$`, err.(string))
 		}()
 		migrate.New(migrate.Options{DB: &sql.DB{}, FS: fstest.MapFS{}, Table: "+"})
 	})
@@ -292,7 +292,7 @@ func TestNew(t *testing.T) {
 		defer func() {
 			err := recover()
 			is.True(t, err != nil)
-			is.Equal(t, `DB and FS must be set`, err)
+			is.Equal(t, `DB and FS must be set`, err.(string))
 		}()
 		migrate.New(migrate.Options{FS: fstest.MapFS{}})
 	})
@@ -302,7 +302,7 @@ func TestNew(t *testing.T) {
 		defer func() {
 			err := recover()
 			is.True(t, err != nil)
-			is.Equal(t, `DB and FS must be set`, err)
+			is.Equal(t, `DB and FS must be set`, err.(string))
 		}()
 		migrate.New(migrate.Options{DB: &sql.DB{}})
 	})
