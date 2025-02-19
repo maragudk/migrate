@@ -5,7 +5,9 @@
 
 A simple database migration tool using an `sql.DB` connection and `fs.FS` for the migration source. It has no non-test dependencies.
 
-Made in 🇩🇰 by [maragu](https://www.maragu.dk), maker of [online Go courses](https://www.golang.dk/).
+Made with ✨sparkles✨ by [maragu](https://www.maragu.dev/).
+
+Does your company depend on this project? [Contact me at markus@maragu.dk](mailto:markus@maragu.dk?Subject=Supporting%20your%20project) to discuss options for a one-time or recurring invoice to ensure its continued thriving.
 
 ## Features
 
@@ -70,4 +72,10 @@ Then you can run `migrate` in your terminal.
 
 ```shell
 migrate create sql/migrations accounts
+```
+
+From Go 1.24, you can also add it as a tool dependency in your `go.mod` file:
+
+```shell
+go get -tool maragu.dev/migrate/cmd/migrate
 ```
