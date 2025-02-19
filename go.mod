@@ -3,7 +3,7 @@ module maragu.dev/migrate
 go 1.18
 
 require (
-	github.com/go-sql-driver/mysql v1.8.1
+	github.com/go-sql-driver/mysql v1.9.0
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/mattn/go-sqlite3 v1.14.24
 	maragu.dev/is v0.2.0
