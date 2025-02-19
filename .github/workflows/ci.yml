@@ -21,6 +21,7 @@ jobs:
       matrix:
         go: ["1.18", "1.19", "1.20", "1.21", "1.22", "1.23", "1.24"]
         postgres: ["12", "13", "14", "15", "16", "17"]
+        maria: ["10", "11"]
 
     services:
       postgres:
@@ -35,7 +36,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
       maria:
-        image: mariadb:10
+        image: mariadb:${{ matrix.maria }}
         ports:
           - 3306:3306
         env:
