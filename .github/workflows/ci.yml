@@ -10,7 +10,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
 
 jobs:
   test:
@@ -19,8 +19,8 @@ jobs:
 
     strategy:
       matrix:
-        go: ["1.18", "1.19", "1.20", "1.21", "1.22", "1.23"]
-        postgres: ["12", "13", "14", "15", "16"]
+        go: ["1.18", "1.19", "1.20", "1.21", "1.22", "1.23", "1.24"]
+        postgres: ["12", "13", "14", "15", "16", "17"]
 
     services:
       postgres:
@@ -63,16 +63,12 @@ jobs:
         run: go build -v ./...
 
       - name: Test
-        if: ${{ matrix.go != '1.16' }}
         run: go test -v -p 1 -shuffle on ./...
-
-      - name: Test
-        if: ${{ matrix.go == '1.16' }}
-        run: go test -v -p 1 ./...
 
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    if: ${{ github.triggering_actor != 'dependabot[bot]' }}
 
     steps:
       - name: Checkout
@@ -85,6 +81,6 @@ jobs:
           check-latest: true
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
           version: latest
