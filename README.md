@@ -1,7 +1,7 @@
 # Migrate
 
 [![GoDoc](https://pkg.go.dev/badge/maragu.dev/migrate)](https://pkg.go.dev/maragu.dev/migrate)
-[![Go](https://github.com/maragudk/migrate/actions/workflows/ci.yml/badge.svg)](https://github.com/maragudk/migrate/actions/workflows/ci.yml)
+[![CI](https://github.com/maragudk/migrate/actions/workflows/ci.yml/badge.svg)](https://github.com/maragudk/migrate/actions/workflows/ci.yml)
 
 A simple database migration tool using an `sql.DB` connection and `fs.FS` for the migration source. It has no non-test dependencies.
 
