@@ -6,7 +6,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/mattn/go-sqlite3 v1.14.27
-	maragu.dev/is v0.3.0
+	maragu.dev/is v0.3.1
 )
 
 require (
